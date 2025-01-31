@@ -110,6 +110,7 @@ const App: React.FC = () => {
       return false;
     }
   };
+  
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -365,6 +366,29 @@ const TasksView: React.FC = () => {
     }
   };
 
+  const handleStatusChange = async (taskId: number, newStatus: Task['estado']) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${auth.token}`
+        },
+        body: JSON.stringify({
+          estado: newStatus,
+          fecha_tentiva_finalizacion: null,
+          category_id: null
+        })
+      });
+
+      if (response.ok) {
+        fetchTasks(); // Refresh the task list
+      }
+    } catch (err) {
+      console.error('Error al actualizar el estado:', err);
+    }
+  };
+
   const getStatusClass = (status: Task['estado']) => {
     switch (status) {
       case 'Sin Empezar': return 'status-pending';
@@ -411,6 +435,7 @@ const TasksView: React.FC = () => {
           </button>
         </div>
       </div>
+      
 
       <div className="task-list">
         {tasks.map(task => (
@@ -425,6 +450,17 @@ const TasksView: React.FC = () => {
               <span className={`status-badge ${getStatusClass(task.estado)}`}>
                 {task.estado}
               </span>
+            </div>
+            <div className="task-actions">
+              <select
+                className={`status-select ${getStatusClass(task.estado)}`}
+                value={task.estado}
+                onChange={(e) => handleStatusChange(task.id, e.target.value as Task['estado'])}
+              >
+                <option value="Sin Empezar">Sin Empezar</option>
+                <option value="Empezada">Empezada</option>
+                <option value="Finalizada">Finalizada</option>
+              </select>
             </div>
           </div>
         ))}
@@ -538,4 +574,5 @@ const TasksView: React.FC = () => {
   );
 };
 
-export default TasksView;
+
+export default App;

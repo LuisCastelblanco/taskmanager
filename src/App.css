@@ -171,6 +171,7 @@ body {
   border-radius: var(--border-radius);
   font-weight: 500;
   font-size: 0.875rem;
+  
 }
 
 .status-pending {
@@ -576,5 +577,41 @@ body {
     left: 16px;
     right: 16px;
     bottom: 16px;
+  }
+  .status-select{
+    width: 100%;
+    padding: 10px 16px;
+    border: 1px solid var(--gray-300);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    color: var(--gray-800);
+    background-color: white;
+  }
+  .status-pending {
+    background-color: var(--gray-200);
+    color: var(--gray-700);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    padding-left: 10px;
+  }
+  .status-in-progress {
+    background-color: var(--warning-bg);
+    color: var(--warning-text);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    padding-left: 10px;
+  }
+  .status-completed {
+    background-color: var(--success-bg);
+    color: var(--success-text);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    padding-left: 10px;
+  }
+  .status-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
   }
 }
