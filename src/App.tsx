@@ -53,11 +53,38 @@ const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [user, setUser] = useState<User | null>(null);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
+
+  const fetchUserData = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      }
+    } catch (err) {
+      console.error('Error al obtener datos del usuario:', err);
+      showToast('Error al obtener datos del usuario', 'error');
+    }
+  }, [token, showToast]);
+
+  useEffect(() => {
+    if (token) {
+      fetchUserData();
+    }
+  }, [token, fetchUserData]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -110,7 +137,7 @@ const App: React.FC = () => {
       return false;
     }
   };
-  
+
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
@@ -132,9 +159,22 @@ const App: React.FC = () => {
           {token && (
             <div className="header-actions">
               <div className="user-menu">
-                <div className="user-avatar">
-                  {user?.nombre_usuario.charAt(0).toUpperCase()}
-                </div>
+                <button
+                  className="user-avatar"
+                  onClick={() => setShowProfileModal(true)}
+                  title="Editar Perfil"
+                >
+                  {user?.imagen_perfil ? (
+                    <img
+                      src={user.imagen_perfil}
+                      alt={user.nombre_usuario}
+                      className="avatar-image"
+                    />
+                  ) : (
+                    user?.nombre_usuario.charAt(0).toUpperCase()
+                  )}
+                </button>
+                <span className="username">{user?.nombre_usuario}</span>
                 <button className="btn btn-danger" onClick={logout}>
                   Cerrar Sesión
                 </button>
@@ -148,6 +188,91 @@ const App: React.FC = () => {
         </main>
 
         <Toast toast={toast} />
+        {showProfileModal && user && (
+          <div className="modal-overlay active">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h2>Editar Perfil</h2>
+                <button className="modal-close" onClick={() => setShowProfileModal(false)}>×</button>
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const updateData: any = {};
+
+                const username = formData.get('nombre_usuario') as string;
+                const password = formData.get('contrasenia') as string;
+                const imageUrl = formData.get('imagen_perfil') as string;
+
+                if (username && username !== user.nombre_usuario) {
+                  updateData.nombre_usuario = username;
+                }
+                if (password) {
+                  updateData.contrasenia = password;
+                }
+                if (imageUrl && imageUrl !== user.imagen_perfil) {
+                  updateData.imagen_perfil = imageUrl;
+                }
+
+                try {
+                  const response = await fetch(`${API_BASE_URL}/users/${user.id}`, {
+                    method: 'PUT',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(updateData)
+                  });
+
+                  if (!response.ok) throw new Error('Error al actualizar el perfil');
+
+                  showToast('Perfil actualizado exitosamente', 'success');
+                  fetchUserData();
+                  setShowProfileModal(false);
+                } catch (err) {
+                  console.error('Error al actualizar el perfil:', err);
+                  showToast('Error al actualizar el perfil', 'error');
+                }
+              }}>
+                <div className="form-group">
+                  <label className="form-label">Nombre de Usuario</label>
+                  <input
+                    type="text"
+                    name="nombre_usuario"
+                    className="form-input"
+                    defaultValue={user.nombre_usuario}
+                    maxLength={50}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Nueva Contraseña (dejar en blanco para mantener la actual)</label>
+                  <input
+                    type="password"
+                    name="contrasenia"
+                    className="form-input"
+                    minLength={8}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">URL de Imagen de Perfil</label>
+                  <input
+                    type="text"
+                    name="imagen_perfil"
+                    className="form-input"
+                    defaultValue={user.imagen_perfil || ''}
+                  />
+                </div>
+
+                <button type="submit" className="btn btn-primary">
+                  Guardar Cambios
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </AuthContext.Provider>
   );
@@ -341,6 +466,23 @@ const TasksView: React.FC = () => {
     }
   };
 
+  const handleDeleteTask = async (taskId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${auth.token}`
+        }
+      });
+
+      if (response.ok) {
+        fetchTasks();
+      }
+    } catch (err) {
+      console.error('Error al eliminar tarea:', err);
+    }
+  };
+
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -435,7 +577,7 @@ const TasksView: React.FC = () => {
           </button>
         </div>
       </div>
-      
+
 
       <div className="task-list">
         {tasks.map(task => (
@@ -444,11 +586,6 @@ const TasksView: React.FC = () => {
               <h3 className="task-title">{task.texto}</h3>
               <span className="task-category">
                 {categories.find(c => c.id === task.category_id)?.nombre}
-              </span>
-            </div>
-            <div className="task-actions">
-              <span className={`status-badge ${getStatusClass(task.estado)}`}>
-                {task.estado}
               </span>
             </div>
             <div className="task-actions">
@@ -461,6 +598,13 @@ const TasksView: React.FC = () => {
                 <option value="Empezada">Empezada</option>
                 <option value="Finalizada">Finalizada</option>
               </select>
+              <button
+                className="btn btn-danger"
+                onClick={() => handleDeleteTask(task.id)}
+                title="Eliminar tarea"
+              >
+                Eliminar
+              </button>
             </div>
           </div>
         ))}
